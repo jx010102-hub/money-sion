@@ -454,6 +454,16 @@ let loans=load(KEY_LOAN,[]);
 let settings=Object.assign(JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),load(KEY_SET,{}));
 settings.categories.forEach(c=>{if(!GROUPS.includes(c.group))c.group='간단지출'});
 if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().catch(()=>{})}
+/* ---------- 비상금 초기 데이터 (한 번만 적용) ---------- */
+const SEED_SV={start:7361147,startDate:'2026-08-01',entries:[{"id": "sv-import-01", "date": "2026-08-01", "type": "out", "amount": 300000, "memo": "생활비 부족", "createdAt": 1754000000000}, {"id": "sv-import-02", "date": "2026-08-01", "type": "out", "amount": 1250000, "memo": "교회훈련비+엄마&오빠 돈", "createdAt": 1754000000001}, {"id": "sv-import-03", "date": "2026-09-01", "type": "out", "amount": 160000, "memo": "드럼 수강비", "createdAt": 1754000000002}, {"id": "sv-import-04", "date": "2026-09-01", "type": "out", "amount": 30000, "memo": "생활비 부족", "createdAt": 1754000000003}, {"id": "sv-import-05", "date": "2026-09-15", "type": "out", "amount": 300000, "memo": "국민은행카드출금", "createdAt": 1754000000004}, {"id": "sv-import-06", "date": "2026-09-19", "type": "out", "amount": 20000, "memo": "헌금", "createdAt": 1754000000005}, {"id": "sv-import-07", "date": "2026-09-20", "type": "out", "amount": 110000, "memo": "생활비부족", "createdAt": 1754000000006}, {"id": "sv-import-08", "date": "2026-09-21", "type": "out", "amount": 300000, "memo": "우리카드카드출금", "createdAt": 1754000000007}, {"id": "sv-import-09", "date": "2026-09-29", "type": "out", "amount": 15000, "memo": "옷", "createdAt": 1754000000008}, {"id": "sv-import-10", "date": "2026-10-12", "type": "out", "amount": 300000, "memo": "카드값", "createdAt": 1754000000009}, {"id": "sv-import-11", "date": "2026-10-13", "type": "out", "amount": 40000, "memo": "생활비", "createdAt": 1754000000010}, {"id": "sv-import-12", "date": "2026-10-13", "type": "out", "amount": 180000, "memo": "생활비", "createdAt": 1754000000011}, {"id": "sv-import-13", "date": "2026-10-15", "type": "out", "amount": 300000, "memo": "아이패드", "createdAt": 1754000000012}, {"id": "sv-import-14", "date": "2026-10-16", "type": "out", "amount": 180000, "memo": "아이패드", "createdAt": 1754000000013}, {"id": "sv-import-15", "date": "2026-10-27", "type": "out", "amount": 90000, "memo": "패딩", "createdAt": 1754000000014}]};
+if(!localStorage.getItem('gb.seed.sv1')){
+  const ids=new Set(savings.entries.map(x=>x.id));
+  SEED_SV.entries.forEach(x=>{if(!ids.has(x.id))savings.entries.push(x)});
+  savings.start=SEED_SV.start;savings.startDate=SEED_SV.startDate;
+  try{localStorage.setItem('gb.seed.sv1','1')}catch(e){}
+  persist();
+}
+
 
 /* ---------- 유틸 ---------- */
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
