@@ -153,6 +153,21 @@ nav.tabs button.on .i{filter:none;opacity:1}
 .edit-list .er input{flex:1}
 .edit-list .er .emo{width:60px;flex:none;text-align:center}
 .edit-list .er button{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);color:var(--sub);flex:none}
+.seg{display:flex;background:var(--bg);border-radius:12px;padding:4px;gap:4px}
+.seg button{flex:1;padding:10px;border-radius:9px;font-weight:600;color:var(--sub)}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.seg button.on.in{color:var(--accent)}.seg button.on.out{color:var(--danger)}
+.plus{color:var(--accent)}.minus{color:var(--danger)}
+.loan{border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+.loan+.loan{margin-top:12px}
+.loan .lh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.loan .lh b{font-size:17px}
+.loan .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:12px}
+.loan .meta div{background:var(--bg);border-radius:10px;padding:8px 10px;font-size:13px;color:var(--sub)}
+.loan .meta div b{display:block;font-size:15px;color:var(--ink);margin-top:2px}
+.loan details{margin-top:10px}
+.loan summary{cursor:pointer;font-size:14px;color:var(--sub);font-weight:600}
+.tag-mini{font-size:11px;font-weight:700;padding:1px 6px;border-radius:6px;background:var(--bg);color:var(--sub);margin-right:4px}
 .guide ol{padding-left:20px;line-height:1.7;margin:8px 0}
 .guide code{background:var(--bg);padding:2px 6px;border-radius:6px;font-size:14px}
 .stack>*+*{margin-top:10px}
@@ -209,6 +224,44 @@ nav.tabs button.on .i{filter:none;opacity:1}
       <div id="dayPanel"></div>
     </div>
   </div>
+</section>
+
+<!-- 비상금 -->
+<section class="view" id="v-savings">
+  <div class="grid two">
+    <div class="stack">
+      <div class="card">
+        <h2>비상금 잔액</h2>
+        <div class="big num" id="svBal">0원</div>
+        <div class="muted" id="svStartInfo"></div>
+        <div class="split">
+          <div class="s"><span>이번 달 들어온 돈</span><b class="num" id="svIn">0원</b></div>
+          <div class="s" style="background:#f8e7e4"><span style="color:var(--danger)">이번 달 나간 돈</span><b class="num" id="svOut">0원</b></div>
+        </div>
+        <div class="row" style="margin-top:16px">
+          <button class="btn" data-sv="in">＋ 입금</button>
+          <button class="btn line" data-sv="out" style="color:var(--danger);border-color:var(--danger)">－ 출금</button>
+        </div>
+        <button class="muted" id="svStartBtn" style="margin-top:12px;text-decoration:underline">시작 잔액 설정</button>
+      </div>
+      <div class="card"><p class="muted" style="margin:0;line-height:1.6">지출 입력에서 결제수단을 <b>비상금</b>으로 고르면 여기에도 <b>출금</b>으로 자동 반영돼요. 그 항목은 지출 내역에서 수정하면 돼요.</p></div>
+    </div>
+    <div class="card">
+      <h2>비상금 내역</h2>
+      <div id="svList"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 대출 -->
+<section class="view" id="v-loans">
+  <div class="card" style="margin-bottom:18px">
+    <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:14px">
+      <div><h2 style="margin-bottom:4px">남은 대출 원금</h2><div class="big num" id="lnTotal">0원</div><div class="muted" id="lnSub"></div></div>
+      <button class="btn sm" id="lnAdd">＋ 대출 추가</button>
+    </div>
+  </div>
+  <div class="card"><div id="lnList"></div></div>
 </section>
 
 <!-- 통계 -->
@@ -317,10 +370,25 @@ nav.tabs button.on .i{filter:none;opacity:1}
 <nav class="tabs" id="tabs">
   <button data-view="home" class="on"><span class="i">🏠</span>현황</button>
   <button data-view="list"><span class="i">📅</span>내역</button>
+  <button data-view="savings"><span class="i">💰</span>비상금</button>
+  <button data-view="loans"><span class="i">🏦</span>대출</button>
   <button data-view="stats"><span class="i">📊</span>통계</button>
   <button data-view="export"><span class="i">📤</span>내보내기</button>
   <button data-view="settings"><span class="i">⚙️</span>설정</button>
 </nav>
+
+<!-- 범용 입력 창 (비상금·대출) -->
+<div class="modal" id="form" role="dialog" aria-modal="true">
+  <div class="sheet">
+    <div class="sheet-head"><h3 id="formTitle"></h3><button class="xbtn" data-form-close aria-label="닫기">✕</button></div>
+    <div id="formBody"></div>
+    <div class="row sheet-foot">
+      <button class="btn danger sm" id="formDel" hidden>삭제</button>
+      <button class="btn line sm" data-form-close>취소</button>
+      <button class="btn" id="formSave" style="flex:1">저장</button>
+    </div>
+  </div>
+</div>
 
 <!-- 입력/수정 팝업 -->
 <div class="modal" id="entry" role="dialog" aria-modal="true">
@@ -362,7 +430,7 @@ nav.tabs button.on .i{filter:none;opacity:1}
 <script>
 'use strict';
 /* ---------- 저장소 ---------- */
-const KEY_ITEMS='gb.items.v1', KEY_SET='gb.settings.v2', KEY_BACKUP='gb.lastBackup';
+const KEY_ITEMS='gb.items.v1', KEY_SET='gb.settings.v2', KEY_BACKUP='gb.lastBackup', KEY_SAV='gb.savings.v1', KEY_LOAN='gb.loans.v1';
 const GROUPS=['간단지출','고정지출'];
 const PALETTE=['#1f6f5c','#e07a5f','#f2a541','#8e6c8a','#5b8e7d','#c75146','#3d5a80','#4a90a4','#6d597a','#2a9d8f','#b56576','#a3a847','#d4a373','#e76f51','#7f7f7f'];
 const DEFAULT_SETTINGS={
@@ -372,15 +440,17 @@ const DEFAULT_SETTINGS={
     {name:'헌금',emoji:'⛪',group:'고정지출'},{name:'가족회비',emoji:'👪',group:'고정지출'},{name:'통신비',emoji:'📱',group:'고정지출'},
     {name:'교통비',emoji:'🚌',group:'고정지출'},{name:'카드값',emoji:'💳',group:'고정지출'}
   ],
-  payments:['신용카드','계좌','비상금'],
+  payments:['신용카드','계좌','비상금'], savingsPay:'비상금',
   lastPayment:'신용카드', lastCategory:'식비'
 };
 function load(k,def){try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}}
 function persist(){
-  try{localStorage.setItem(KEY_ITEMS,JSON.stringify(items));localStorage.setItem(KEY_SET,JSON.stringify(settings))}
+  try{localStorage.setItem(KEY_ITEMS,JSON.stringify(items));localStorage.setItem(KEY_SET,JSON.stringify(settings));localStorage.setItem(KEY_SAV,JSON.stringify(savings));localStorage.setItem(KEY_LOAN,JSON.stringify(loans))}
   catch(e){alert('저장 공간 문제로 저장하지 못했어요. 백업 후 다시 시도해 주세요.')}
 }
 let items=load(KEY_ITEMS,[]);
+let savings=Object.assign({start:0,startDate:'',entries:[]},load(KEY_SAV,{}));
+let loans=load(KEY_LOAN,[]);
 let settings=Object.assign(JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),load(KEY_SET,{}));
 settings.categories.forEach(c=>{if(!GROUPS.includes(c.group))c.group='간단지출'});
 if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().catch(()=>{})}
@@ -427,7 +497,7 @@ let curView='home', viewMonth=mKey(todayStr()), selDate=todayStr();
 function show(v){
   curView=v;$$('.view').forEach(s=>s.classList.toggle('active',s.id==='v-'+v));
   $$('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
-  const titles={home:'가계부',list:'지출 내역',stats:'월간 통계',export:'내보내기',settings:'설정'};
+  const titles={home:'가계부',list:'지출 내역',savings:'비상금',loans:'대출',stats:'월간 통계',export:'내보내기',settings:'설정'};
   $('#title').textContent=titles[v];
   $('#fab').classList.toggle('hide',!(v==='home'||v==='list'));
   window.scrollTo(0,0);render();
@@ -723,7 +793,7 @@ $('#shareText').onclick=async()=>{const t=summaryText(viewMonth);
   if(navigator.share){try{await navigator.share({text:t})}catch(e){}}
   else{try{await navigator.clipboard.writeText(t);toast('요약을 복사했어요')}catch(e){alert(t)}}};
 $('#backupBtn').onclick=async()=>{
-  const blob=new Blob([JSON.stringify({app:'gagyebu',version:2,exportedAt:new Date().toISOString(),items,settings},null,1)],{type:'application/json'});
+  const blob=new Blob([JSON.stringify({app:'gagyebu',version:3,exportedAt:new Date().toISOString(),items,settings,savings,loans},null,1)],{type:'application/json'});
   const name=`가계부_백업_${todayStr()}.json`,file=new File([blob],name,{type:'application/json'});
   localStorage.setItem(KEY_BACKUP,JSON.stringify(Date.now()));
   if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file]})}catch(e){if(e.name!=='AbortError')download(blob,name)}}
@@ -735,7 +805,11 @@ $('#restoreFile').onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
   try{const d=JSON.parse(await f.text());if(!Array.isArray(d.items))throw 0;
     const valid=d.items.filter(x=>x&&x.id&&/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&Number(x.amount)>0);
-    if(confirm(`백업에 ${valid.length}건이 있어요.\n\n[확인] 현재 기록과 합치기 (중복 제외)\n[취소] 복원 안 함`)){
+    const extra=(d.savings&&Array.isArray(d.savings.entries)?`\n비상금 기록 ${d.savings.entries.length}건`:'')+(Array.isArray(d.loans)?`\n대출 ${d.loans.length}건`:'');
+    if(confirm(`백업에 지출 ${valid.length}건이 있어요.${extra}\n\n[확인] 현재 기록과 합치기 (중복 제외)\n[취소] 복원 안 함`)){
+      if(d.savings&&Array.isArray(d.savings.entries)){const sid=new Set(savings.entries.map(x=>x.id));d.savings.entries.forEach(x=>{if(x&&x.id&&!sid.has(x.id))savings.entries.push(x)});
+        if(!savings.start&&d.savings.start){savings.start=Number(d.savings.start)||0;savings.startDate=d.savings.startDate||''}}
+      if(Array.isArray(d.loans)){const lid=new Set(loans.map(x=>x.id));d.loans.forEach(x=>{if(x&&x.id&&!lid.has(x.id))loans.push({payments:[],...x})})}
       const ids=new Set(items.map(x=>x.id));valid.forEach(x=>{if(!ids.has(x.id))items.push({...x,amount:Number(x.amount)})});
       if(d.settings&&Array.isArray(d.settings.categories)){d.settings.categories.forEach(c=>{if(!settings.categories.some(s=>s.name===c.name))settings.categories.push({...c,group:GROUPS.includes(c.group)?c.group:'간단지출'})});
         (d.settings.payments||[]).forEach(p=>{if(!settings.payments.includes(p))settings.payments.push(p)})}
@@ -759,7 +833,7 @@ $('#v-settings').addEventListener('change',e=>{const t=e.target,d=t.dataset;
     renameEverywhere('category',settings.categories[i].name,v);if(settings.lastCategory===settings.categories[i].name)settings.lastCategory=v;settings.categories[i].name=v}
   else if(d.ce!=null){settings.categories[+d.ce].emoji=t.value.trim()||'📦'}
   else if(d.pn!=null){const i=+d.pn,v=t.value.trim();if(!v||settings.payments.some((p,j)=>j!==i&&p===v)){t.value=settings.payments[i];toast('이름이 비었거나 중복이에요');return}
-    renameEverywhere('payment',settings.payments[i],v);if(settings.lastPayment===settings.payments[i])settings.lastPayment=v;settings.payments[i]=v}
+    renameEverywhere('payment',settings.payments[i],v);if(settings.savingsPay===settings.payments[i])settings.savingsPay=v;if(settings.lastPayment===settings.payments[i])settings.lastPayment=v;settings.payments[i]=v}
   else return;persist();render();
 });
 $('#v-settings').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset,C=settings.categories;
@@ -779,10 +853,139 @@ $('#addPay').onclick=()=>{const n=$('#newPayName').value.trim();if(!n)return;if(
 $('#resetBtn').onclick=()=>{if(!items.length)return;if(!confirm(`지출 기록 ${items.length}건을 모두 삭제할까요?\n먼저 ‘내보내기 → 백업 파일 저장’을 권장해요.`))return;
   if(!confirm('정말 삭제할까요? 되돌릴 수 없어요.'))return;items=[];persist();render();toast('모두 삭제했어요')};
 
+/* ---------- 범용 입력 창 ---------- */
+let formCfg=null;
+function openForm(cfg){
+  hideToast();formCfg=cfg;$('#formTitle').textContent=cfg.title;$('#formDel').hidden=!cfg.onDelete;
+  $('#formBody').innerHTML=cfg.fields.map(f=>{
+    const v=f.value??'';const lab=`<div class="label">${esc(f.label)}</div>`;
+    if(f.type==='seg')return lab+`<div class="seg" data-key="${f.key}">${f.options.map(o=>`<button type="button" class="${o.cls||''}${o.v===v?' on':''}" data-v="${o.v}">${esc(o.t)}</button>`).join('')}</div>`;
+    if(f.type==='money')return (f.big?'':lab)+`<div class="amount-wrap"${f.big?' style="margin-top:8px"':''}><input data-key="${f.key}" data-money class="num" inputmode="numeric" placeholder="0" value="${v?Number(v).toLocaleString('ko-KR'):''}" autocomplete="off" ${f.big?'':'style="font-size:24px"'}><span>원</span></div>`;
+    return lab+`<input data-key="${f.key}" class="field" type="${f.type==='date'?'date':'text'}" ${f.type==='number'?'inputmode="decimal"':''} placeholder="${esc(f.ph||'')}" value="${esc(v)}" maxlength="${f.max||60}" autocomplete="off">`;
+  }).join('');
+  $('#form').classList.add('open');document.body.style.overflow='hidden';
+}
+function closeForm(){$('#form').classList.remove('open');document.body.style.overflow='';formCfg=null;render()}
+$('#formBody').addEventListener('input',e=>{if(e.target.hasAttribute('data-money'))fmtInput(e.target)});
+$('#formBody').addEventListener('click',e=>{const b=e.target.closest('.seg button');if(!b)return;b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});
+document.addEventListener('click',e=>{if(e.target.closest('[data-form-close]'))closeForm()});
+function formValues(){const o={};
+  $$('#formBody [data-key]').forEach(el=>{const k=el.dataset.key;
+    if(el.classList.contains('seg'))o[k]=el.querySelector('.on')?.dataset.v;
+    else if(el.hasAttribute('data-money'))o[k]=digits(el.value);
+    else o[k]=el.value.trim()});return o}
+$('#formSave').onclick=()=>{if(!formCfg)return;const err=formCfg.onSave(formValues());if(err){toast(err);return}persist();closeForm()};
+$('#formDel').onclick=()=>{if(!formCfg||!formCfg.onDelete)return;if(!confirm('삭제할까요?'))return;formCfg.onDelete();persist();closeForm();toast('삭제했어요')};
+
+/* ---------- 비상금 ---------- */
+function savingsRows(){
+  const pay=settings.savingsPay||'비상금';
+  const rows=[
+    ...savings.entries.map(x=>({...x,kind:'manual'})),
+    ...items.filter(x=>x.payment===pay).map(x=>({id:x.id,date:x.date,type:'out',amount:x.amount,memo:x.memo||x.category,kind:'expense',category:x.category,createdAt:x.createdAt}))
+  ].filter(x=>!savings.startDate||x.date>=savings.startDate);
+  rows.sort((a,b)=>a.date.localeCompare(b.date)||(a.createdAt||0)-(b.createdAt||0));
+  let bal=Number(savings.start)||0;rows.forEach(r=>{bal+=r.type==='in'?r.amount:-r.amount;r.bal=bal});
+  return{rows,bal};
+}
+function renderSavings(){
+  const{rows,bal}=savingsRows(),k=mKey(todayStr()),mr=rows.filter(r=>mKey(r.date)===k);
+  $('#svBal').textContent=won(bal);$('#svBal').style.color=bal<0?'var(--danger)':'';
+  $('#svStartInfo').textContent=savings.start||savings.startDate?`시작 잔액 ${won(savings.start)}${savings.startDate?` (${savings.startDate}부터)`:''}`:'시작 잔액이 아직 없어요';
+  $('#svIn').textContent=won(sum(mr.filter(r=>r.type==='in')));
+  $('#svOut').textContent=won(sum(mr.filter(r=>r.type==='out')));
+  if(!rows.length){$('#svList').innerHTML='<div class="empty">아직 비상금 기록이 없어요<br><span style="font-size:13px">먼저 ‘시작 잔액 설정’으로 현재 비상금을 넣어 주세요</span></div>';return}
+  const desc=rows.slice().reverse(),groups=new Map();desc.forEach(r=>{const m=mKey(r.date);if(!groups.has(m))groups.set(m,[]);groups.get(m).push(r)});
+  $('#svList').innerHTML=[...groups].map(([m,l])=>`<div class="day-head"><span>${mLabel(m)}</span><span class="num"><span class="plus">+${sum(l.filter(r=>r.type==='in')).toLocaleString('ko-KR')}</span> / <span class="minus">-${sum(l.filter(r=>r.type==='out')).toLocaleString('ko-KR')}</span></span></div>`+
+    l.map(r=>`<button class="item" ${r.kind==='expense'?`data-id="${r.id}"`:`data-svid="${r.id}"`}><span class="ic" style="background:${r.type==='in'?'var(--accent-soft)':'#f8e7e4'}">${r.type==='in'?'⬇️':'⬆️'}</span>
+      <span class="mid"><div class="t">${esc(r.memo||(r.type==='in'?'입금':'출금'))}</div><div class="s">${r.kind==='expense'?'<span class="tag-mini">지출</span>':''}${r.date.slice(5).replace('-','/')} · 잔액 ${won(r.bal)}</div></span>
+      <span class="amt num ${r.type==='in'?'plus':'minus'}">${r.type==='in'?'+':'-'}${won(r.amount)}</span></button>`).join('')).join('');
+}
+function openSavingsForm(entry,type){
+  openForm({title:entry?'비상금 기록 수정':'비상금 기록',fields:[
+    {key:'amount',type:'money',big:true,value:entry?.amount},
+    {key:'type',label:'구분',type:'seg',value:entry?.type||type||'in',options:[{v:'in',t:'입금 (모으기)',cls:'in'},{v:'out',t:'출금 (꺼내 쓰기)',cls:'out'}]},
+    {key:'memo',label:'메모',ph:'예) 월급에서 저축, 병원비',value:entry?.memo},
+    {key:'date',label:'날짜',type:'date',value:entry?.date||todayStr()}],
+    onSave:v=>{if(!v.amount)return'금액을 입력해 주세요';
+      if(entry)Object.assign(entry,{amount:v.amount,type:v.type,memo:v.memo,date:v.date||entry.date});
+      else savings.entries.push({id:uid(),amount:v.amount,type:v.type,memo:v.memo,date:v.date||todayStr(),createdAt:Date.now()})},
+    onDelete:entry?()=>{savings.entries=savings.entries.filter(x=>x!==entry)}:null});
+}
+document.addEventListener('click',e=>{
+  const a=e.target.closest('[data-sv]');if(a){openSavingsForm(null,a.dataset.sv);return}
+  const b=e.target.closest('[data-svid]');if(b){const en=savings.entries.find(x=>x.id===b.dataset.svid);if(en)openSavingsForm(en)}
+});
+$('#svStartBtn').onclick=()=>openForm({title:'시작 잔액 설정',fields:[
+  {key:'start',label:'이 날짜 기준 비상금',type:'money',value:savings.start},
+  {key:'startDate',label:'기준 날짜 (이 날 이후 기록만 계산)',type:'date',value:savings.startDate||todayStr()}],
+  onSave:v=>{savings.start=v.start;savings.startDate=v.startDate||''}});
+
+/* ---------- 대출 ---------- */
+const loanPaid=l=>(l.payments||[]).reduce((s,p)=>s+(Number(p.principal)||0),0);
+const loanLeft=l=>Math.max((Number(l.principal)||0)-loanPaid(l),0);
+function renderLoans(){
+  const active=loans.filter(l=>loanLeft(l)>0),total=sum(active.map(l=>({amount:loanLeft(l)})));
+  $('#lnTotal').textContent=won(total);
+  const monthly=active.reduce((s,l)=>s+(Number(l.monthly)||0),0);
+  $('#lnSub').textContent=loans.length?`대출 ${active.length}건 진행 중${monthly?` · 매월 상환 ${won(monthly)}`:''}`:'';
+  if(!loans.length){$('#lnList').innerHTML='<div class="empty">등록된 대출이 없어요<br><span style="font-size:13px">‘＋ 대출 추가’로 대출 정보를 넣어 주세요</span></div>';return}
+  const sorted=loans.slice().sort((a,b)=>(loanLeft(a)===0)-(loanLeft(b)===0));
+  $('#lnList').innerHTML=sorted.map(l=>{const P=Number(l.principal)||0,paid=loanPaid(l),left=loanLeft(l),pct=P?Math.min(paid/P*100,100):0;
+    const interest=(l.payments||[]).reduce((s,p)=>s+(Number(p.interest)||0),0);
+    const pays=(l.payments||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+    return `<div class="loan"><div class="lh"><div><b>${esc(l.name)}</b>${left===0?' <span class="badge">완납</span>':''}<div class="muted">${esc(l.bank||'')}${l.memo?' · '+esc(l.memo):''}</div></div>
+      <div style="text-align:right"><div class="muted" style="font-size:13px">남은 원금</div><b class="num" style="font-size:20px">${won(left)}</b></div></div>
+      <div class="bar-track" style="margin-top:12px"><div class="bar-fill" style="width:${pct}%;background:var(--fixed)"></div></div>
+      <div class="muted" style="font-size:13px;margin-top:5px">원금 ${won(P)} 중 ${won(paid)} 상환 (${pct.toFixed(0)}%)</div>
+      <div class="meta">
+        <div>금리<b>${l.rate?esc(l.rate)+'%':'-'}</b></div>
+        <div>매월 상환<b class="num">${l.monthly?won(l.monthly):'-'}${l.payDay?` <span class="muted" style="font-size:12px">(${esc(l.payDay)}일)</span>`:''}</b></div>
+        <div>기간<b>${l.startDate?esc(l.startDate.slice(2).replace(/-/g,'.')):'-'} ~ ${l.endDate?esc(l.endDate.slice(2).replace(/-/g,'.')):'-'}</b></div>
+        <div>낸 이자 합계<b class="num">${won(interest)}</b></div>
+      </div>
+      <div class="row" style="margin-top:12px"><button class="btn sm" data-lnpay="${l.id}">＋ 상환 기록</button><button class="btn line sm" data-lnedit="${l.id}">대출 정보 수정</button></div>
+      ${pays.length?`<details><summary>상환 내역 ${pays.length}건</summary>${pays.map(p=>`<button class="item" data-lnp="${l.id}|${p.id}"><span class="mid"><div class="t num">${won((Number(p.principal)||0)+(Number(p.interest)||0))}</div>
+        <div class="s">${esc(p.date)} · 원금 ${won(p.principal)} · 이자 ${won(p.interest)}${p.memo?' · '+esc(p.memo):''}</div></span></button>`).join('')}</details>`:''}
+    </div>`}).join('');
+}
+function openLoanForm(l){
+  openForm({title:l?'대출 정보 수정':'대출 추가',fields:[
+    {key:'name',label:'대출 이름',ph:'예) 전세자금대출',value:l?.name,max:30},
+    {key:'bank',label:'은행·기관',ph:'예) 국민은행',value:l?.bank,max:30},
+    {key:'principal',label:'대출 원금 (처음 빌린 금액)',type:'money',value:l?.principal},
+    {key:'rate',label:'금리 (%)',type:'number',ph:'예) 4.2',value:l?.rate,max:8},
+    {key:'monthly',label:'매월 상환액',type:'money',value:l?.monthly},
+    {key:'payDay',label:'매월 상환일',type:'number',ph:'예) 25',value:l?.payDay,max:2},
+    {key:'startDate',label:'대출 시작일',type:'date',value:l?.startDate},
+    {key:'endDate',label:'만기일',type:'date',value:l?.endDate},
+    {key:'memo',label:'메모',ph:'예) 원리금균등, 중도상환 가능',value:l?.memo}],
+    onSave:v=>{if(!v.name)return'대출 이름을 입력해 주세요';if(!v.principal)return'대출 원금을 입력해 주세요';
+      if(l)Object.assign(l,v);else loans.push({id:uid(),...v,payments:[],createdAt:Date.now()})},
+    onDelete:l?()=>{loans=loans.filter(x=>x!==l)}:null});
+}
+function openLoanPay(l,p){
+  openForm({title:`${l.name} 상환 ${p?'수정':'기록'}`,fields:[
+    {key:'principal',label:'원금 상환',type:'money',value:p?p.principal:(l.monthly||'')},
+    {key:'interest',label:'이자',type:'money',value:p?.interest},
+    {key:'date',label:'날짜',type:'date',value:p?.date||todayStr()},
+    {key:'memo',label:'메모',ph:'예) 중도상환',value:p?.memo}],
+    onSave:v=>{if(!v.principal&&!v.interest)return'금액을 입력해 주세요';
+      if(p)Object.assign(p,v,{date:v.date||p.date});else(l.payments=l.payments||[]).push({id:uid(),...v,date:v.date||todayStr()})},
+    onDelete:p?()=>{l.payments=l.payments.filter(x=>x!==p)}:null});
+}
+$('#lnAdd').onclick=()=>openLoanForm(null);
+$('#lnList').addEventListener('click',e=>{
+  const a=e.target.closest('[data-lnpay]'),b=e.target.closest('[data-lnedit]'),c=e.target.closest('[data-lnp]');
+  if(a)openLoanPay(loans.find(x=>x.id===a.dataset.lnpay));
+  else if(b)openLoanForm(loans.find(x=>x.id===b.dataset.lnedit));
+  else if(c){const[lid,pid]=c.dataset.lnp.split('|');const l=loans.find(x=>x.id===lid);const p=l&&l.payments.find(x=>x.id===pid);if(p)openLoanPay(l,p)}
+});
+
 /* ---------- 렌더 ---------- */
 function render(){
   const d=new Date();$('#todayLabel').textContent=`${d.getMonth()+1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일`;
-  ({home:renderHome,list:renderList,stats:renderStats,export:renderExport,settings:renderSettings})[curView]();
+  ({home:renderHome,list:renderList,savings:renderSavings,loans:renderLoans,stats:renderStats,export:renderExport,settings:renderSettings})[curView]();
 }
 // 앱을 열 때마다 입력 팝업부터 (다른 앱에 10분 이상 갔다 오거나 날짜가 바뀌어도 다시 띄움)
 let lastDay=todayStr(),hiddenAt=0;
@@ -790,7 +993,7 @@ document.addEventListener('visibilitychange',()=>{
   if(document.hidden){hiddenAt=Date.now();return}
   const newDay=todayStr()!==lastDay;
   if(newDay){lastDay=todayStr();viewMonth=mKey(lastDay);selDate=lastDay}
-  if((newDay||Date.now()-hiddenAt>10*60*1000)&&!$('#entry').classList.contains('open')){show('home');openEntry()}
+  if((newDay||Date.now()-hiddenAt>10*60*1000)&&!$('#entry').classList.contains('open')&&!$('#form').classList.contains('open')){show('home');openEntry()}
   else render();
 });
 render();
