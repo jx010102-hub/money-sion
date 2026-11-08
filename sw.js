@@ -1,5 +1,5 @@
 // 오프라인에서도 열리도록 앱 파일을 저장해 두는 서비스 워커
-const CACHE = 'gagyebu-v4';
+const CACHE = 'gagyebu-v5';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

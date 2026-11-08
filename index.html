@@ -274,7 +274,17 @@ nav.tabs button.on .i{filter:none;opacity:1}
           <button class="btn" data-sv="in">＋ 입금</button>
           <button class="btn line" data-sv="out" style="color:var(--danger);border-color:var(--danger)">－ 출금</button>
         </div>
-        <div class="links"><button id="svStartBtn">시작 잔액</button><button id="svFloorBtn">최소 유지 금액</button></div>
+        <div id="svLimit"></div>
+        <div class="links"><button id="svStartBtn">시작 잔액</button><button id="svFloorBtn">최소 유지 금액</button><button id="svLimitBtn">월 사용 한도</button></div>
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between"><h2 style="margin:0">생활비 부족 추적</h2><span class="muted" style="font-size:13px" id="lvSince"></span></div>
+        <div class="muted" style="margin-top:10px">아직 채워 넣지 못한 돈</div>
+        <div class="big num" id="lvLeft" style="font-size:28px">0원</div>
+        <div class="bar-track" style="height:10px;margin-top:6px"><div class="bar-fill" id="lvBar" style="background:var(--accent)"></div></div>
+        <div class="gauge-legend" style="margin-top:6px"><span id="lvPaid"></span><span id="lvBorrow"></span></div>
+        <div id="lvMonths" class="muted" style="font-size:13px;margin-top:10px;line-height:1.7"></div>
+        <button class="btn ghost" id="lvRefill" style="margin-top:14px">＋ 생활비 부족분 채워 넣기</button>
       </div>
       <div class="card">
         <h2>어디에 썼을까</h2>
@@ -498,6 +508,7 @@ const SEED_SV={start:7361147,startDate:'2026-08-01',entries:[{"id": "sv-import-0
 const SV_CATS=['생활비','카드값','쇼핑','교육·취미','헌금','가족·교회','기타'];
 const SEED_CAT={'sv-import-01':'생활비','sv-import-02':'가족·교회','sv-import-03':'교육·취미','sv-import-04':'생활비','sv-import-05':'카드값','sv-import-06':'헌금','sv-import-07':'생활비','sv-import-08':'카드값','sv-import-09':'쇼핑','sv-import-10':'카드값','sv-import-11':'생활비','sv-import-12':'생활비','sv-import-13':'쇼핑','sv-import-14':'쇼핑','sv-import-15':'쇼핑'};
 if(!savings.floor&&savings.floor!==0)savings.floor=3000000;
+if(savings.monthLimit==null)savings.monthLimit=300000;
 if(!localStorage.getItem('gb.seed.sv1')){
   const ids=new Set(savings.entries.map(x=>x.id));
   SEED_SV.entries.forEach(x=>{if(!ids.has(x.id))savings.entries.push(x)});
@@ -613,8 +624,9 @@ function saveEntry(){
   const group=catInfo(selCat,editing&&editing.group).group;
   const data={amount,category:selCat,group,payment:selPay||'신용카드',memo:$('#memo').value.trim(),date:$('#date').value||todayStr()};
   if(data.payment===(settings.savingsPay||'비상금')){
-    const before=savingsRows().bal+(editing&&editing.payment===data.payment?editing.amount:0);
-    if(!savingsGuard(before,data.amount))return;
+    const was=editing&&editing.payment===data.payment;
+    const before=savingsRows().bal+(was?editing.amount:0);
+    if(!savingsGuard(before,data.amount,data.date,was&&mKey(editing.date)===mKey(data.date)?editing.amount:0))return;
   }
   if(editing){Object.assign(editing,data);persist();closeEntry();toast('수정했어요');return}
   const it={id:uid(),...data,createdAt:Date.now()};
@@ -659,6 +671,8 @@ function renderHome(){
   $('#todayList').innerHTML=ti.length?ti.map(x=>itemRow(x)).join(''):'<div class="empty">오늘은 아직 기록이 없어요</div>';
   renderBanner();
   const sb=savingsRows().bal,fl=savings.floor||0;
+  const lim=savings.monthLimit||0,mu=svMonthUsed(mKey(todayStr()));
+  if(lim&&mu>lim)$('#monthEndBanner').insertAdjacentHTML('afterbegin',`<div class="banner" style="background:#fbefd9"><div>📅 <b style="color:var(--warn)">이번 달 비상금 사용 한도를 넘었어요</b><div class="muted" style="margin-top:4px">${won(mu)} 사용 · 한도 ${won(lim)}</div></div><button class="btn sm line" onclick="show('savings')">비상금 보기</button></div>`);
   if(fl&&sb<fl)$('#monthEndBanner').insertAdjacentHTML('afterbegin',`<div class="banner" style="background:#f8e7e4"><div>⚠️ <b style="color:var(--danger)">비상금이 ${won(fl)} 아래예요</b><div class="muted" style="margin-top:4px">현재 ${won(sb)} · ${won(fl-sb)} 채워야 해요</div></div><button class="btn sm line" onclick="show('savings')">비상금 보기</button></div>`);
 }
 function renderBanner(){
@@ -917,22 +931,24 @@ $('#resetBtn').onclick=()=>{if(!items.length)return;if(!confirm(`지출 기록 $
 let formCfg=null;
 function openForm(cfg){
   hideToast();formCfg=cfg;$('#formTitle').textContent=cfg.title;$('#formDel').hidden=!cfg.onDelete;
-  $('#formBody').innerHTML=cfg.fields.map(f=>{
+  const typeVal=(cfg.fields.find(f=>f.key==='type')||{}).value;
+  $('#formBody').innerHTML=cfg.fields.map(f=>{const h=fieldHTML(f);return f.showIf?`<div class="fwrap" data-show="${f.showIf}" style="${f.showIf===typeVal?'':'display:none'}">${h}</div>`:h}).join('');
+  $('#form').classList.add('open');document.body.style.overflow='hidden';
+}
+function fieldHTML(f){{
     const v=f.value??'';const lab=`<div class="label">${esc(f.label)}</div>`;
     if(f.type==='seg')return lab+`<div class="seg" data-key="${f.key}">${f.options.map(o=>`<button type="button" class="${o.cls||''}${o.v===v?' on':''}" data-v="${o.v}">${esc(o.t)}</button>`).join('')}</div>`;
     if(f.type==='chips')return lab+`<div class="chips" data-key="${f.key}">${f.options.map(o=>`<button type="button" class="chip${o===v?' on':''}" data-v="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
     if(f.type==='money')return (f.big?'':lab)+`<div class="amount-wrap"${f.big?' style="margin-top:8px"':''}><input data-key="${f.key}" data-money class="num" inputmode="numeric" placeholder="0" value="${v?Number(v).toLocaleString('ko-KR'):''}" autocomplete="off" ${f.big?'':'style="font-size:24px"'}><span>원</span></div>`;
     return lab+`<input data-key="${f.key}" class="field" type="${f.type==='date'?'date':'text'}" ${f.type==='number'?'inputmode="decimal"':''} placeholder="${esc(f.ph||'')}" value="${esc(v)}" maxlength="${f.max||60}" autocomplete="off">`;
-  }).join('');
-  $('#form').classList.add('open');document.body.style.overflow='hidden';
-}
+}}
 function closeForm(){$('#form').classList.remove('open');document.body.style.overflow='';formCfg=null;render()}
 $('#formBody').addEventListener('input',e=>{if(e.target.hasAttribute('data-money'))fmtInput(e.target)});
 $('#formBody').addEventListener('click',e=>{const b=e.target.closest('.seg button,.chips .chip');if(!b)return;b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
-  if(b.closest('[data-key=type]')){const w=$('#formBody [data-key=category]');if(w)w.closest('.cat-wrap').style.display=b.dataset.v==='out'?'':'none'}});
+  if(b.closest('[data-key=type]'))$$('#formBody .fwrap').forEach(w=>w.style.display=w.dataset.show===b.dataset.v?'':'none')});
 document.addEventListener('click',e=>{if(e.target.closest('[data-form-close]'))closeForm()});
 function formValues(){const o={};
-  $$('#formBody [data-key]').forEach(el=>{const k=el.dataset.key;
+  $$('#formBody [data-key]').forEach(el=>{const k=el.dataset.key;const fw=el.closest('.fwrap');if(fw&&fw.style.display==='none')return;
     if(el.classList.contains('seg')||el.classList.contains('chips'))o[k]=el.querySelector('.on')?.dataset.v;
     else if(el.hasAttribute('data-money'))o[k]=digits(el.value);
     else o[k]=el.value.trim()});return o}
@@ -944,7 +960,7 @@ let svPeriod='all';
 function savingsRows(){
   const pay=settings.savingsPay||'비상금';
   const rows=[
-    ...savings.entries.map(x=>({...x,kind:'manual',cat:x.type==='in'?'입금':(x.category||'기타')})),
+    ...savings.entries.map(x=>({...x,kind:'manual',cat:x.type==='in'?(x.purpose||'저축'):(x.category||'기타')})),
     ...items.filter(x=>x.payment===pay).map(x=>({id:x.id,date:x.date,type:'out',amount:x.amount,memo:x.memo||x.category,kind:'expense',cat:x.category,createdAt:x.createdAt}))
   ].filter(x=>!savings.startDate||x.date>=savings.startDate);
   rows.sort((a,b)=>a.date.localeCompare(b.date)||(a.createdAt||0)-(b.createdAt||0));
@@ -952,10 +968,14 @@ function savingsRows(){
   return{rows,bal};
 }
 // 출금 전 확인: 최소 유지 금액 아래로 내려가면 경고
-function savingsGuard(before,amount){
-  const fl=savings.floor||0,after=before-amount;
-  if(!fl||after>=fl)return true;
-  return confirm(`⚠️ 비상금 최소 유지 금액 경고\n\n이 출금을 하면 잔액이 ${won(after)}이 돼서\n정해 둔 ${won(fl)}보다 ${won(fl-after)} 부족해져요.\n\n${before>fl?`지금 쓸 수 있는 금액은 ${won(before-fl)}까지예요.\n\n`:''}그래도 기록할까요?`);
+function svMonthUsed(m,rows){return sum((rows||savingsRows().rows).filter(r=>r.type==='out'&&mKey(r.date)===m))}
+function savingsGuard(before,amount,date,prevSameMonth){
+  const fl=savings.floor||0,lim=savings.monthLimit||0,after=before-amount,m=mKey(date||todayStr());
+  const used=svMonthUsed(m)-(prevSameMonth||0),usedAfter=used+amount,msgs=[];
+  if(lim&&usedAfter>lim)msgs.push(`📅 ${Number(m.slice(5))}월 사용 한도 초과\n한도 ${won(lim)} 중 이미 ${won(used)}을 썼어요.\n이번 출금까지 ${won(usedAfter)} (${won(usedAfter-lim)} 초과)`+(used<lim?`\n이번 달 남은 한도는 ${won(lim-used)}이에요.`:''));
+  if(fl&&after<fl)msgs.push(`🛑 최소 유지 금액 아래로 내려가요\n잔액이 ${won(after)}이 돼서 ${won(fl)}보다 ${won(fl-after)} 부족해져요.`+(before>fl?`\n지금 쓸 수 있는 금액은 ${won(before-fl)}까지예요.`:''));
+  if(!msgs.length)return true;
+  return confirm(`⚠️ 비상금 경고\n\n${msgs.join('\n\n')}\n\n그래도 기록할까요?`);
 }
 function svLevel(bal){const fl=savings.floor||0;if(!fl)return{cls:'ok',t:'제한 없음'};
   const av=bal-fl;if(av<0)return{cls:'danger',t:'⚠️ 최소 유지 금액 미만'};if(av<500000)return{cls:'warn',t:'⚠️ 여유가 얼마 안 남았어요'};return{cls:'ok',t:'✓ 안전'}}
@@ -973,6 +993,24 @@ function renderSavings(){
   }else{$('#svGauge').innerHTML='';$('#svAvailLabel').textContent='쓸 수 있는 금액';$('#svAvail').textContent=won(bal);$('#svAvail').style.color=''}
   $('#svIn').textContent=won(sum(mr.filter(r=>r.type==='in')));
   $('#svOut').textContent=won(sum(mr.filter(r=>r.type==='out')));
+  // 월 사용 한도
+  const lim=savings.monthLimit||0,used=svMonthUsed(k,rows);
+  if(lim){const pct=used/lim*100,col=pct>100?'var(--danger)':pct>=80?'var(--warn)':'var(--accent)';
+    $('#svLimit').innerHTML=`<div style="margin-top:16px"><div class="row" style="justify-content:space-between;font-size:14px"><span>📅 ${Number(k.slice(5))}월 사용 한도</span>
+      <span class="num"><b style="color:${col}">${won(used)}</b> <span class="muted">/ ${won(lim)}</span></span></div>
+      <div class="bar-track" style="height:10px;margin-top:6px"><div class="bar-fill" style="width:${Math.min(pct,100)}%;background:${col}"></div></div>
+      <div class="muted" style="font-size:13px;margin-top:5px;color:${pct>100?'var(--danger)':''}">${pct>100?`⚠️ 한도를 ${won(used-lim)} 넘었어요`:pct>=80?`⚠️ 한도의 ${pct.toFixed(0)}%를 썼어요 · 남은 한도 ${won(lim-used)}`:`남은 한도 ${won(lim-used)}`}</div></div>`;
+  }else $('#svLimit').innerHTML='';
+  // 생활비 부족 추적
+  const borrows=rows.filter(r=>r.type==='out'&&r.cat==='생활비'),refills=rows.filter(r=>r.type==='in'&&r.cat==='생활비 채워넣기');
+  const bt=sum(borrows),rt=sum(refills),left=Math.max(bt-rt,0);
+  $('#lvLeft').textContent=won(left);$('#lvLeft').style.color=left?'var(--danger)':'var(--accent)';
+  $('#lvBar').style.width=(bt?Math.min(rt/bt*100,100):0)+'%';
+  $('#lvPaid').textContent=`채워 넣은 돈 ${won(rt)}`;$('#lvBorrow').textContent=`생활비로 꺼낸 돈 ${won(bt)} · ${borrows.length}건`;
+  $('#lvSince').textContent=savings.startDate?`${Number(savings.startDate.slice(5,7))}월부터`:'';
+  const bm=groupSum(borrows,r=>mKey(r.date)).sort((a,b)=>a.name.localeCompare(b.name));
+  $('#lvMonths').innerHTML=bt?(left?'':'🎉 생활비로 꺼낸 돈을 모두 채워 넣었어요<br>')+'월별: '+bm.map(g=>`${Number(g.name.slice(5))}월 ${won(g.total)}`).join(' · '):'아직 생활비로 꺼낸 기록이 없어요';
+  $('#lvRefill').style.display=left?'':'none';
   // 통계
   const months=[...new Set(rows.map(r=>mKey(r.date)))].sort();
   if(svPeriod!=='all'&&!months.includes(svPeriod))svPeriod='all';
@@ -993,28 +1031,28 @@ function renderSavings(){
     return `<details class="acc" data-m="${m}"${m===openM?' open':''}><summary><span class="chev">▶</span><span class="mt">${mLabel(m)}<small>${l.length}건</small></span>
       <span class="num" style="font-size:14px">${i?`<span class="plus">+${i.toLocaleString('ko-KR')}</span> `:''}<span class="minus">-${o.toLocaleString('ko-KR')}</span></span></summary><div class="rows">`+
     l.map(r=>`<button class="item" ${r.kind==='expense'?`data-id="${r.id}"`:`data-svid="${r.id}"`}><span class="ic" style="background:${r.type==='in'?'var(--accent-soft)':svColor(r.cat)+'22'}">${r.type==='in'?'⬇️':(r.kind==='expense'?esc(catInfo(r.cat).emoji):'⬆️')}</span>
-      <span class="mid"><div class="t">${esc(r.memo||(r.type==='in'?'입금':'출금'))}</div><div class="s">${r.kind==='expense'?'<span class="tag-mini">지출</span>':''}${r.type==='out'?`<span class="tag-mini" style="color:${svColor(r.cat)}">${esc(r.cat)}</span>`:''}${r.date.slice(5).replace('-','/')} · 잔액 ${won(r.bal)}</div></span>
+      <span class="mid"><div class="t">${esc(r.memo||(r.type==='in'?'입금':'출금'))}</div><div class="s">${r.kind==='expense'?'<span class="tag-mini">지출</span>':''}${r.type==='out'?`<span class="tag-mini" style="color:${svColor(r.cat)}">${esc(r.cat)}</span>`:(r.cat==='생활비 채워넣기'?'<span class="tag-mini" style="color:var(--accent)">채워넣기</span>':'')}${r.date.slice(5).replace('-','/')} · 잔액 ${won(r.bal)}</div></span>
       <span class="amt num ${r.type==='in'?'plus':'minus'}">${r.type==='in'?'+':'-'}${won(r.amount)}</span></button>`).join('')+'</div></details>'}).join('');
 }
 let svOpen=null;
 $('#svList').addEventListener('click',e=>{const sm=e.target.closest('details.acc>summary');if(!sm)return;const d=sm.parentNode;svOpen=d.open?'':d.dataset.m});
 $('#svPeriod').addEventListener('click',e=>{const b=e.target.closest('[data-svp]');if(b){svPeriod=b.dataset.svp;renderSavings()}});
-function openSavingsForm(entry,type){
+function openSavingsForm(entry,type,preset){
   const t=entry?.type||type||'in';
-  openForm({title:entry?'비상금 기록 수정':(t==='out'?'비상금 출금':'비상금 입금'),fields:[
-    {key:'amount',type:'money',big:true,value:entry?.amount},
+  openForm({title:entry?'비상금 기록 수정':(preset?.purpose?'생활비 부족분 채워 넣기':(t==='out'?'비상금 출금':'비상금 입금')),fields:[
+    {key:'amount',type:'money',big:true,value:entry?.amount??preset?.amount},
     {key:'type',label:'구분',type:'seg',value:t,options:[{v:'in',t:'입금 (모으기)',cls:'in'},{v:'out',t:'출금 (꺼내 쓰기)',cls:'out'}]},
-    {key:'category',label:'어디에 썼나요',type:'chips',value:entry?.category||'생활비',options:SV_CATS},
+    {key:'category',label:'어디에 썼나요',type:'chips',value:entry?.category||'생활비',options:SV_CATS,showIf:'out'},
+    {key:'purpose',label:'어떤 돈인가요',type:'chips',value:entry?.purpose||preset?.purpose||'저축',options:['저축','생활비 채워넣기'],showIf:'in'},
     {key:'memo',label:'메모',ph:'예) 월급에서 저축, 병원비',value:entry?.memo},
     {key:'date',label:'날짜',type:'date',value:entry?.date||todayStr()}],
     onSave:v=>{if(!v.amount)return'금액을 입력해 주세요';
-      if(v.type==='out'){const before=savingsRows().bal+(entry?(entry.type==='out'?entry.amount:-entry.amount):0);if(!savingsGuard(before,v.amount))return'저장하지 않았어요'}
-      const data={amount:v.amount,type:v.type,memo:v.memo,date:v.date||entry?.date||todayStr(),category:v.type==='out'?(v.category||'기타'):undefined};
+      const d=v.date||entry?.date||todayStr();
+      if(v.type==='out'){const before=savingsRows().bal+(entry?(entry.type==='out'?entry.amount:-entry.amount):0);
+        if(!savingsGuard(before,v.amount,d,entry&&entry.type==='out'&&mKey(entry.date)===mKey(d)?entry.amount:0))return'저장하지 않았어요'}
+      const data={amount:v.amount,type:v.type,memo:v.memo,date:d,category:v.type==='out'?(v.category||'기타'):undefined,purpose:v.type==='in'?(v.purpose||'저축'):undefined};
       if(entry)Object.assign(entry,data);else savings.entries.push({id:uid(),...data,createdAt:Date.now()})},
     onDelete:entry?()=>{savings.entries=savings.entries.filter(x=>x!==entry)}:null});
-  // 카테고리 칩은 출금일 때만
-  const w=$('#formBody .chips[data-key=category]');const wrap=document.createElement('div');wrap.className='cat-wrap';
-  w.previousElementSibling.before(wrap);wrap.append(w.previousElementSibling,w);wrap.style.display=t==='out'?'':'none';
 }
 document.addEventListener('click',e=>{
   const a=e.target.closest('[data-sv]');if(a){openSavingsForm(null,a.dataset.sv);return}
@@ -1024,6 +1062,11 @@ $('#svStartBtn').onclick=()=>openForm({title:'시작 잔액 설정',fields:[
   {key:'start',label:'이 날짜 기준 비상금',type:'money',value:savings.start},
   {key:'startDate',label:'기준 날짜 (이 날 이후 기록만 계산)',type:'date',value:savings.startDate||todayStr()}],
   onSave:v=>{savings.start=v.start;savings.startDate=v.startDate||''}});
+$('#lvRefill').onclick=()=>{const{rows}=savingsRows();const left=sum(rows.filter(r=>r.type==='out'&&r.cat==='생활비'))-sum(rows.filter(r=>r.type==='in'&&r.cat==='생활비 채워넣기'));
+  openSavingsForm(null,'in',{purpose:'생활비 채워넣기',amount:Math.max(left,0)})};
+$('#svLimitBtn').onclick=()=>openForm({title:'월 사용 한도',fields:[
+  {key:'monthLimit',label:'한 달에 비상금을 이 금액 넘게 쓰면 경고해요 (0이면 끔)',type:'money',value:savings.monthLimit}],
+  onSave:v=>{savings.monthLimit=v.monthLimit}});
 $('#svFloorBtn').onclick=()=>openForm({title:'최소 유지 금액',fields:[
   {key:'floor',label:'비상금이 이 금액 아래로 내려가면 경고해요 (0이면 끔)',type:'money',value:savings.floor}],
   onSave:v=>{savings.floor=v.floor}});
