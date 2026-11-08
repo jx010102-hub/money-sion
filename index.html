@@ -808,7 +808,8 @@ $('#restoreFile').onchange=async e=>{
     const extra=(d.savings&&Array.isArray(d.savings.entries)?`\n비상금 기록 ${d.savings.entries.length}건`:'')+(Array.isArray(d.loans)?`\n대출 ${d.loans.length}건`:'');
     if(confirm(`백업에 지출 ${valid.length}건이 있어요.${extra}\n\n[확인] 현재 기록과 합치기 (중복 제외)\n[취소] 복원 안 함`)){
       if(d.savings&&Array.isArray(d.savings.entries)){const sid=new Set(savings.entries.map(x=>x.id));d.savings.entries.forEach(x=>{if(x&&x.id&&!sid.has(x.id))savings.entries.push(x)});
-        if(!savings.start&&d.savings.start){savings.start=Number(d.savings.start)||0;savings.startDate=d.savings.startDate||''}}
+        const bs=Number(d.savings.start)||0,bd=d.savings.startDate||'';
+        if((bs||bd)&&(bs!==Number(savings.start)||bd!==savings.startDate)&&(!savings.start&&!savings.startDate||confirm(`비상금 시작 잔액을 백업 값(${won(bs)}${bd?', '+bd+'부터':''})으로 바꿀까요?`))){savings.start=bs;savings.startDate=bd}}
       if(Array.isArray(d.loans)){const lid=new Set(loans.map(x=>x.id));d.loans.forEach(x=>{if(x&&x.id&&!lid.has(x.id))loans.push({payments:[],...x})})}
       const ids=new Set(items.map(x=>x.id));valid.forEach(x=>{if(!ids.has(x.id))items.push({...x,amount:Number(x.amount)})});
       if(d.settings&&Array.isArray(d.settings.categories)){d.settings.categories.forEach(c=>{if(!settings.categories.some(s=>s.name===c.name))settings.categories.push({...c,group:GROUPS.includes(c.group)?c.group:'간단지출'})});
