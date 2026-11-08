@@ -158,6 +158,37 @@ nav.tabs button.on .i{filter:none;opacity:1}
 .seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .seg button.on.in{color:var(--accent)}.seg button.on.out{color:var(--danger)}
 .plus{color:var(--accent)}.minus{color:var(--danger)}
+.sv-status{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;padding:4px 10px;border-radius:99px}
+.sv-status.ok{background:var(--accent-soft);color:var(--accent)}
+.sv-status.warn{background:#fbefd9;color:var(--warn)}
+.sv-status.danger{background:#f8e7e4;color:var(--danger)}
+.gauge{position:relative;height:14px;background:var(--bg);border-radius:99px;margin:18px 0 6px;overflow:visible}
+.gauge .fill{height:100%;border-radius:99px}
+.gauge .floor{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--ink);opacity:.6}
+.gauge .floor span{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;white-space:nowrap;color:var(--sub)}
+.gauge-legend{display:flex;justify-content:space-between;font-size:12px;color:var(--sub)}
+.avail{display:flex;justify-content:space-between;align-items:baseline;margin-top:14px;padding:12px 14px;border-radius:12px;background:var(--bg)}
+.avail b{font-size:20px}
+.links{display:flex;gap:16px;margin-top:12px}
+.links button{font-size:14px;color:var(--sub);text-decoration:underline}
+.acc{border-bottom:1px solid var(--line)}
+.acc summary{list-style:none;display:flex;align-items:center;gap:10px;padding:14px 4px;cursor:pointer}
+.acc summary::-webkit-details-marker{display:none}
+.acc summary .chev{transition:.15s;color:var(--sub);font-size:13px;width:14px}
+.acc[open] summary .chev{transform:rotate(90deg)}
+.acc summary .mt{flex:1;font-weight:700}
+.acc summary .mt small{font-weight:500;color:var(--sub);font-size:13px;margin-left:6px}
+.acc .item{padding:9px 4px}
+.acc .item .ic{width:32px;height:32px;font-size:16px;border-radius:9px}
+.acc .rows{padding-bottom:6px}
+.period{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.period button{padding:6px 12px;border-radius:99px;border:1px solid var(--line);font-size:13px;color:var(--sub)}
+.period button.on{background:var(--ink);border-color:var(--ink);color:var(--card);font-weight:700}
+.mbars{display:flex;align-items:flex-end;gap:10px;height:120px;margin-top:8px}
+.mbars .c{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px}
+.mbars .c i{display:block;width:100%;max-width:46px;background:var(--danger);opacity:.8;border-radius:6px 6px 0 0;min-height:2px}
+.mbars .c span{font-size:11px;color:var(--sub);white-space:nowrap}
+.mbars .c em{font-style:normal;font-size:11px;font-weight:700}
 .loan{border:1px solid var(--line);border-radius:16px;padding:16px 18px}
 .loan+.loan{margin-top:12px}
 .loan .lh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
@@ -231,9 +262,10 @@ nav.tabs button.on .i{filter:none;opacity:1}
   <div class="grid two">
     <div class="stack">
       <div class="card">
-        <h2>비상금 잔액</h2>
-        <div class="big num" id="svBal">0원</div>
-        <div class="muted" id="svStartInfo"></div>
+        <div class="row" style="justify-content:space-between"><h2 style="margin:0">비상금 잔액</h2><span id="svStatus"></span></div>
+        <div class="big num" id="svBal" style="margin-top:8px">0원</div>
+        <div id="svGauge"></div>
+        <div class="avail"><span class="muted" id="svAvailLabel">쓸 수 있는 금액</span><b class="num" id="svAvail">0원</b></div>
         <div class="split">
           <div class="s"><span>이번 달 들어온 돈</span><b class="num" id="svIn">0원</b></div>
           <div class="s" style="background:#f8e7e4"><span style="color:var(--danger)">이번 달 나간 돈</span><b class="num" id="svOut">0원</b></div>
@@ -242,13 +274,20 @@ nav.tabs button.on .i{filter:none;opacity:1}
           <button class="btn" data-sv="in">＋ 입금</button>
           <button class="btn line" data-sv="out" style="color:var(--danger);border-color:var(--danger)">－ 출금</button>
         </div>
-        <button class="muted" id="svStartBtn" style="margin-top:12px;text-decoration:underline">시작 잔액 설정</button>
+        <div class="links"><button id="svStartBtn">시작 잔액</button><button id="svFloorBtn">최소 유지 금액</button></div>
       </div>
-      <div class="card"><p class="muted" style="margin:0;line-height:1.6">지출 입력에서 결제수단을 <b>비상금</b>으로 고르면 여기에도 <b>출금</b>으로 자동 반영돼요. 그 항목은 지출 내역에서 수정하면 돼요.</p></div>
+      <div class="card">
+        <h2>어디에 썼을까</h2>
+        <div class="period" id="svPeriod"></div>
+        <div class="donut-wrap"><div id="svDonut"></div><div class="legend bars" id="svCats"></div></div>
+        <div class="label" style="margin-top:22px">월별 비상금 사용액</div>
+        <div class="mbars" id="svMonthly"></div>
+      </div>
     </div>
     <div class="card">
       <h2>비상금 내역</h2>
       <div id="svList"></div>
+      <p class="muted" style="margin:14px 0 0;font-size:13px;line-height:1.6">결제수단을 <b>비상금</b>으로 고른 지출은 여기에 <span class="tag-mini">지출</span> 표시로 자동 반영돼요.</p>
     </div>
   </div>
 </section>
@@ -456,6 +495,9 @@ settings.categories.forEach(c=>{if(!GROUPS.includes(c.group))c.group='간단지�
 if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().catch(()=>{})}
 /* ---------- 비상금 초기 데이터 (한 번만 적용) ---------- */
 const SEED_SV={start:7361147,startDate:'2026-08-01',entries:[{"id": "sv-import-01", "date": "2026-08-01", "type": "out", "amount": 300000, "memo": "생활비 부족", "createdAt": 1754000000000}, {"id": "sv-import-02", "date": "2026-08-01", "type": "out", "amount": 1250000, "memo": "교회훈련비+엄마&오빠 돈", "createdAt": 1754000000001}, {"id": "sv-import-03", "date": "2026-09-01", "type": "out", "amount": 160000, "memo": "드럼 수강비", "createdAt": 1754000000002}, {"id": "sv-import-04", "date": "2026-09-01", "type": "out", "amount": 30000, "memo": "생활비 부족", "createdAt": 1754000000003}, {"id": "sv-import-05", "date": "2026-09-15", "type": "out", "amount": 300000, "memo": "국민은행카드출금", "createdAt": 1754000000004}, {"id": "sv-import-06", "date": "2026-09-19", "type": "out", "amount": 20000, "memo": "헌금", "createdAt": 1754000000005}, {"id": "sv-import-07", "date": "2026-09-20", "type": "out", "amount": 110000, "memo": "생활비부족", "createdAt": 1754000000006}, {"id": "sv-import-08", "date": "2026-09-21", "type": "out", "amount": 300000, "memo": "우리카드카드출금", "createdAt": 1754000000007}, {"id": "sv-import-09", "date": "2026-09-29", "type": "out", "amount": 15000, "memo": "옷", "createdAt": 1754000000008}, {"id": "sv-import-10", "date": "2026-10-12", "type": "out", "amount": 300000, "memo": "카드값", "createdAt": 1754000000009}, {"id": "sv-import-11", "date": "2026-10-13", "type": "out", "amount": 40000, "memo": "생활비", "createdAt": 1754000000010}, {"id": "sv-import-12", "date": "2026-10-13", "type": "out", "amount": 180000, "memo": "생활비", "createdAt": 1754000000011}, {"id": "sv-import-13", "date": "2026-10-15", "type": "out", "amount": 300000, "memo": "아이패드", "createdAt": 1754000000012}, {"id": "sv-import-14", "date": "2026-10-16", "type": "out", "amount": 180000, "memo": "아이패드", "createdAt": 1754000000013}, {"id": "sv-import-15", "date": "2026-10-27", "type": "out", "amount": 90000, "memo": "패딩", "createdAt": 1754000000014}]};
+const SV_CATS=['생활비','카드값','쇼핑','교육·취미','헌금','가족·교회','기타'];
+const SEED_CAT={'sv-import-01':'생활비','sv-import-02':'가족·교회','sv-import-03':'교육·취미','sv-import-04':'생활비','sv-import-05':'카드값','sv-import-06':'헌금','sv-import-07':'생활비','sv-import-08':'카드값','sv-import-09':'쇼핑','sv-import-10':'카드값','sv-import-11':'생활비','sv-import-12':'생활비','sv-import-13':'쇼핑','sv-import-14':'쇼핑','sv-import-15':'쇼핑'};
+if(!savings.floor&&savings.floor!==0)savings.floor=3000000;
 if(!localStorage.getItem('gb.seed.sv1')){
   const ids=new Set(savings.entries.map(x=>x.id));
   SEED_SV.entries.forEach(x=>{if(!ids.has(x.id))savings.entries.push(x)});
@@ -463,6 +505,7 @@ if(!localStorage.getItem('gb.seed.sv1')){
   try{localStorage.setItem('gb.seed.sv1','1')}catch(e){}
   persist();
 }
+if(savings.entries.some(x=>SEED_CAT[x.id]&&!x.category)){savings.entries.forEach(x=>{if(SEED_CAT[x.id]&&!x.category)x.category=SEED_CAT[x.id]});persist()}
 
 
 /* ---------- 유틸 ---------- */
@@ -569,6 +612,10 @@ function saveEntry(){
   if(!selCat){toast('카테고리를 골라 주세요');return}
   const group=catInfo(selCat,editing&&editing.group).group;
   const data={amount,category:selCat,group,payment:selPay||'신용카드',memo:$('#memo').value.trim(),date:$('#date').value||todayStr()};
+  if(data.payment===(settings.savingsPay||'비상금')){
+    const before=savingsRows().bal+(editing&&editing.payment===data.payment?editing.amount:0);
+    if(!savingsGuard(before,data.amount))return;
+  }
   if(editing){Object.assign(editing,data);persist();closeEntry();toast('수정했어요');return}
   const it={id:uid(),...data,createdAt:Date.now()};
   items.push(it);settings.lastCategory=selCat;settings.lastPayment=data.payment;persist();
@@ -611,6 +658,8 @@ function renderHome(){
   $('#homeBars').innerHTML=catBarsByGroup(mi,total);
   $('#todayList').innerHTML=ti.length?ti.map(x=>itemRow(x)).join(''):'<div class="empty">오늘은 아직 기록이 없어요</div>';
   renderBanner();
+  const sb=savingsRows().bal,fl=savings.floor||0;
+  if(fl&&sb<fl)$('#monthEndBanner').insertAdjacentHTML('afterbegin',`<div class="banner" style="background:#f8e7e4"><div>⚠️ <b style="color:var(--danger)">비상금이 ${won(fl)} 아래예요</b><div class="muted" style="margin-top:4px">현재 ${won(sb)} · ${won(fl-sb)} 채워야 해요</div></div><button class="btn sm line" onclick="show('savings')">비상금 보기</button></div>`);
 }
 function renderBanner(){
   const now=new Date(),d=now.getDate(),last=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
@@ -871,6 +920,7 @@ function openForm(cfg){
   $('#formBody').innerHTML=cfg.fields.map(f=>{
     const v=f.value??'';const lab=`<div class="label">${esc(f.label)}</div>`;
     if(f.type==='seg')return lab+`<div class="seg" data-key="${f.key}">${f.options.map(o=>`<button type="button" class="${o.cls||''}${o.v===v?' on':''}" data-v="${o.v}">${esc(o.t)}</button>`).join('')}</div>`;
+    if(f.type==='chips')return lab+`<div class="chips" data-key="${f.key}">${f.options.map(o=>`<button type="button" class="chip${o===v?' on':''}" data-v="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
     if(f.type==='money')return (f.big?'':lab)+`<div class="amount-wrap"${f.big?' style="margin-top:8px"':''}><input data-key="${f.key}" data-money class="num" inputmode="numeric" placeholder="0" value="${v?Number(v).toLocaleString('ko-KR'):''}" autocomplete="off" ${f.big?'':'style="font-size:24px"'}><span>원</span></div>`;
     return lab+`<input data-key="${f.key}" class="field" type="${f.type==='date'?'date':'text'}" ${f.type==='number'?'inputmode="decimal"':''} placeholder="${esc(f.ph||'')}" value="${esc(v)}" maxlength="${f.max||60}" autocomplete="off">`;
   }).join('');
@@ -878,50 +928,93 @@ function openForm(cfg){
 }
 function closeForm(){$('#form').classList.remove('open');document.body.style.overflow='';formCfg=null;render()}
 $('#formBody').addEventListener('input',e=>{if(e.target.hasAttribute('data-money'))fmtInput(e.target)});
-$('#formBody').addEventListener('click',e=>{const b=e.target.closest('.seg button');if(!b)return;b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});
+$('#formBody').addEventListener('click',e=>{const b=e.target.closest('.seg button,.chips .chip');if(!b)return;b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  if(b.closest('[data-key=type]')){const w=$('#formBody [data-key=category]');if(w)w.closest('.cat-wrap').style.display=b.dataset.v==='out'?'':'none'}});
 document.addEventListener('click',e=>{if(e.target.closest('[data-form-close]'))closeForm()});
 function formValues(){const o={};
   $$('#formBody [data-key]').forEach(el=>{const k=el.dataset.key;
-    if(el.classList.contains('seg'))o[k]=el.querySelector('.on')?.dataset.v;
+    if(el.classList.contains('seg')||el.classList.contains('chips'))o[k]=el.querySelector('.on')?.dataset.v;
     else if(el.hasAttribute('data-money'))o[k]=digits(el.value);
     else o[k]=el.value.trim()});return o}
 $('#formSave').onclick=()=>{if(!formCfg)return;const err=formCfg.onSave(formValues());if(err){toast(err);return}persist();closeForm()};
 $('#formDel').onclick=()=>{if(!formCfg||!formCfg.onDelete)return;if(!confirm('삭제할까요?'))return;formCfg.onDelete();persist();closeForm();toast('삭제했어요')};
 
 /* ---------- 비상금 ---------- */
+let svPeriod='all';
 function savingsRows(){
   const pay=settings.savingsPay||'비상금';
   const rows=[
-    ...savings.entries.map(x=>({...x,kind:'manual'})),
-    ...items.filter(x=>x.payment===pay).map(x=>({id:x.id,date:x.date,type:'out',amount:x.amount,memo:x.memo||x.category,kind:'expense',category:x.category,createdAt:x.createdAt}))
+    ...savings.entries.map(x=>({...x,kind:'manual',cat:x.type==='in'?'입금':(x.category||'기타')})),
+    ...items.filter(x=>x.payment===pay).map(x=>({id:x.id,date:x.date,type:'out',amount:x.amount,memo:x.memo||x.category,kind:'expense',cat:x.category,createdAt:x.createdAt}))
   ].filter(x=>!savings.startDate||x.date>=savings.startDate);
   rows.sort((a,b)=>a.date.localeCompare(b.date)||(a.createdAt||0)-(b.createdAt||0));
   let bal=Number(savings.start)||0;rows.forEach(r=>{bal+=r.type==='in'?r.amount:-r.amount;r.bal=bal});
   return{rows,bal};
 }
+// 출금 전 확인: 최소 유지 금액 아래로 내려가면 경고
+function savingsGuard(before,amount){
+  const fl=savings.floor||0,after=before-amount;
+  if(!fl||after>=fl)return true;
+  return confirm(`⚠️ 비상금 최소 유지 금액 경고\n\n이 출금을 하면 잔액이 ${won(after)}이 돼서\n정해 둔 ${won(fl)}보다 ${won(fl-after)} 부족해져요.\n\n${before>fl?`지금 쓸 수 있는 금액은 ${won(before-fl)}까지예요.\n\n`:''}그래도 기록할까요?`);
+}
+function svLevel(bal){const fl=savings.floor||0;if(!fl)return{cls:'ok',t:'제한 없음'};
+  const av=bal-fl;if(av<0)return{cls:'danger',t:'⚠️ 최소 유지 금액 미만'};if(av<500000)return{cls:'warn',t:'⚠️ 여유가 얼마 안 남았어요'};return{cls:'ok',t:'✓ 안전'}}
+const SV_COLORS={'생활비':'#e07a5f','카드값':'#3d5a80','쇼핑':'#f2a541','교육·취미':'#8e6c8a','헌금':'#5b8e7d','가족·교회':'#2a9d8f','기타':'#7f7f7f'};
+const svColor=c=>SV_COLORS[c]||catInfo(c).color;
 function renderSavings(){
-  const{rows,bal}=savingsRows(),k=mKey(todayStr()),mr=rows.filter(r=>mKey(r.date)===k);
-  $('#svBal').textContent=won(bal);$('#svBal').style.color=bal<0?'var(--danger)':'';
-  $('#svStartInfo').textContent=savings.start||savings.startDate?`시작 잔액 ${won(savings.start)}${savings.startDate?` (${savings.startDate}부터)`:''}`:'시작 잔액이 아직 없어요';
+  const{rows,bal}=savingsRows(),fl=savings.floor||0,k=mKey(todayStr()),mr=rows.filter(r=>mKey(r.date)===k),lv=svLevel(bal);
+  $('#svBal').textContent=won(bal);$('#svBal').style.color=lv.cls==='danger'?'var(--danger)':'';
+  $('#svStatus').innerHTML=`<span class="sv-status ${lv.cls}">${lv.t}</span>`;
+  if(fl){const max=Math.max(bal,fl*1.6,1),pos=fl/max*100,col=lv.cls==='danger'?'var(--danger)':lv.cls==='warn'?'var(--warn)':'var(--accent)';
+    $('#svGauge').innerHTML=`<div class="gauge"><div class="fill" style="width:${Math.max(Math.min(bal/max*100,100),0)}%;background:${col}"></div><div class="floor" style="left:${pos}%"><span>${(fl/10000).toLocaleString('ko-KR')}만 유지선</span></div></div>
+      <div class="gauge-legend"><span>0원</span><span>${won(max)}</span></div>`;
+    $('#svAvailLabel').textContent=`쓸 수 있는 금액 (${(fl/10000).toLocaleString('ko-KR')}만원 유지 기준)`;
+    $('#svAvail').textContent=bal>=fl?won(bal-fl):`-${won(fl-bal)}`;$('#svAvail').style.color=bal<fl?'var(--danger)':lv.cls==='warn'?'var(--warn)':'var(--accent)';
+  }else{$('#svGauge').innerHTML='';$('#svAvailLabel').textContent='쓸 수 있는 금액';$('#svAvail').textContent=won(bal);$('#svAvail').style.color=''}
   $('#svIn').textContent=won(sum(mr.filter(r=>r.type==='in')));
   $('#svOut').textContent=won(sum(mr.filter(r=>r.type==='out')));
-  if(!rows.length){$('#svList').innerHTML='<div class="empty">아직 비상금 기록이 없어요<br><span style="font-size:13px">먼저 ‘시작 잔액 설정’으로 현재 비상금을 넣어 주세요</span></div>';return}
+  // 통계
+  const months=[...new Set(rows.map(r=>mKey(r.date)))].sort();
+  if(svPeriod!=='all'&&!months.includes(svPeriod))svPeriod='all';
+  $('#svPeriod').innerHTML=[['all','전체'],...months.map(m=>[m,Number(m.slice(5))+'월'])].map(([v,t])=>`<button data-svp="${v}" class="${v===svPeriod?'on':''}">${t}</button>`).join('');
+  const outs=rows.filter(r=>r.type==='out'&&(svPeriod==='all'||mKey(r.date)===svPeriod)),ot=sum(outs);
+  const cg=groupSum(outs,r=>r.cat);
+  const r0=62,C=2*Math.PI*r0;let acc=0;
+  $('#svDonut').innerHTML=`<svg width="160" height="160" viewBox="0 0 160 160"><g transform="rotate(-90 80 80)"><circle r="${r0}" cx="80" cy="80" fill="none" stroke="var(--line)" stroke-width="26"/>${cg.map(g=>{const len=ot?g.total/ot*C:0;const c=`<circle r="${r0}" cx="80" cy="80" fill="none" stroke="${svColor(g.name)}" stroke-width="26" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-acc}"/>`;acc+=len;return c}).join('')}</g>
+    <text x="80" y="76" text-anchor="middle" font-size="12" fill="var(--sub)">사용 합계</text><text x="80" y="96" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">${ot>=10000?Math.round(ot/10000).toLocaleString('ko-KR')+'만원':won(ot)}</text></svg>`;
+  $('#svCats').innerHTML=cg.length?barsHTML(cg,ot,g=>svColor(g.name),g=>esc(g.name)):'<div class="empty">사용 기록이 없어요</div>';
+  const last=months.slice(-6),mv=last.map(m=>sum(rows.filter(r=>r.type==='out'&&mKey(r.date)===m))),mmax=Math.max(...mv,1);
+  $('#svMonthly').innerHTML=last.length?last.map((m,i)=>`<div class="c"><em class="num">${mv[i]?Math.round(mv[i]/10000)+'만':''}</em><i style="height:${Math.max(mv[i]/mmax*80,2)}%"></i><span>${Number(m.slice(5))}월</span></div>`).join(''):'<div class="empty" style="width:100%">기록이 없어요</div>';
+  // 내역 (월별 접기)
+  if(!rows.length){$('#svList').innerHTML='<div class="empty">아직 비상금 기록이 없어요</div>';return}
   const desc=rows.slice().reverse(),groups=new Map();desc.forEach(r=>{const m=mKey(r.date);if(!groups.has(m))groups.set(m,[]);groups.get(m).push(r)});
-  $('#svList').innerHTML=[...groups].map(([m,l])=>`<div class="day-head"><span>${mLabel(m)}</span><span class="num"><span class="plus">+${sum(l.filter(r=>r.type==='in')).toLocaleString('ko-KR')}</span> / <span class="minus">-${sum(l.filter(r=>r.type==='out')).toLocaleString('ko-KR')}</span></span></div>`+
-    l.map(r=>`<button class="item" ${r.kind==='expense'?`data-id="${r.id}"`:`data-svid="${r.id}"`}><span class="ic" style="background:${r.type==='in'?'var(--accent-soft)':'#f8e7e4'}">${r.type==='in'?'⬇️':'⬆️'}</span>
-      <span class="mid"><div class="t">${esc(r.memo||(r.type==='in'?'입금':'출금'))}</div><div class="s">${r.kind==='expense'?'<span class="tag-mini">지출</span>':''}${r.date.slice(5).replace('-','/')} · 잔액 ${won(r.bal)}</div></span>
-      <span class="amt num ${r.type==='in'?'plus':'minus'}">${r.type==='in'?'+':'-'}${won(r.amount)}</span></button>`).join('')).join('');
+  const openM=svOpen??[...groups.keys()][0];
+  $('#svList').innerHTML=[...groups].map(([m,l])=>{const i=sum(l.filter(r=>r.type==='in')),o=sum(l.filter(r=>r.type==='out'));
+    return `<details class="acc" data-m="${m}"${m===openM?' open':''}><summary><span class="chev">▶</span><span class="mt">${mLabel(m)}<small>${l.length}건</small></span>
+      <span class="num" style="font-size:14px">${i?`<span class="plus">+${i.toLocaleString('ko-KR')}</span> `:''}<span class="minus">-${o.toLocaleString('ko-KR')}</span></span></summary><div class="rows">`+
+    l.map(r=>`<button class="item" ${r.kind==='expense'?`data-id="${r.id}"`:`data-svid="${r.id}"`}><span class="ic" style="background:${r.type==='in'?'var(--accent-soft)':svColor(r.cat)+'22'}">${r.type==='in'?'⬇️':(r.kind==='expense'?esc(catInfo(r.cat).emoji):'⬆️')}</span>
+      <span class="mid"><div class="t">${esc(r.memo||(r.type==='in'?'입금':'출금'))}</div><div class="s">${r.kind==='expense'?'<span class="tag-mini">지출</span>':''}${r.type==='out'?`<span class="tag-mini" style="color:${svColor(r.cat)}">${esc(r.cat)}</span>`:''}${r.date.slice(5).replace('-','/')} · 잔액 ${won(r.bal)}</div></span>
+      <span class="amt num ${r.type==='in'?'plus':'minus'}">${r.type==='in'?'+':'-'}${won(r.amount)}</span></button>`).join('')+'</div></details>'}).join('');
 }
+let svOpen=null;
+$('#svList').addEventListener('click',e=>{const sm=e.target.closest('details.acc>summary');if(!sm)return;const d=sm.parentNode;svOpen=d.open?'':d.dataset.m});
+$('#svPeriod').addEventListener('click',e=>{const b=e.target.closest('[data-svp]');if(b){svPeriod=b.dataset.svp;renderSavings()}});
 function openSavingsForm(entry,type){
-  openForm({title:entry?'비상금 기록 수정':'비상금 기록',fields:[
+  const t=entry?.type||type||'in';
+  openForm({title:entry?'비상금 기록 수정':(t==='out'?'비상금 출금':'비상금 입금'),fields:[
     {key:'amount',type:'money',big:true,value:entry?.amount},
-    {key:'type',label:'구분',type:'seg',value:entry?.type||type||'in',options:[{v:'in',t:'입금 (모으기)',cls:'in'},{v:'out',t:'출금 (꺼내 쓰기)',cls:'out'}]},
+    {key:'type',label:'구분',type:'seg',value:t,options:[{v:'in',t:'입금 (모으기)',cls:'in'},{v:'out',t:'출금 (꺼내 쓰기)',cls:'out'}]},
+    {key:'category',label:'어디에 썼나요',type:'chips',value:entry?.category||'생활비',options:SV_CATS},
     {key:'memo',label:'메모',ph:'예) 월급에서 저축, 병원비',value:entry?.memo},
     {key:'date',label:'날짜',type:'date',value:entry?.date||todayStr()}],
     onSave:v=>{if(!v.amount)return'금액을 입력해 주세요';
-      if(entry)Object.assign(entry,{amount:v.amount,type:v.type,memo:v.memo,date:v.date||entry.date});
-      else savings.entries.push({id:uid(),amount:v.amount,type:v.type,memo:v.memo,date:v.date||todayStr(),createdAt:Date.now()})},
+      if(v.type==='out'){const before=savingsRows().bal+(entry?(entry.type==='out'?entry.amount:-entry.amount):0);if(!savingsGuard(before,v.amount))return'저장하지 않았어요'}
+      const data={amount:v.amount,type:v.type,memo:v.memo,date:v.date||entry?.date||todayStr(),category:v.type==='out'?(v.category||'기타'):undefined};
+      if(entry)Object.assign(entry,data);else savings.entries.push({id:uid(),...data,createdAt:Date.now()})},
     onDelete:entry?()=>{savings.entries=savings.entries.filter(x=>x!==entry)}:null});
+  // 카테고리 칩은 출금일 때만
+  const w=$('#formBody .chips[data-key=category]');const wrap=document.createElement('div');wrap.className='cat-wrap';
+  w.previousElementSibling.before(wrap);wrap.append(w.previousElementSibling,w);wrap.style.display=t==='out'?'':'none';
 }
 document.addEventListener('click',e=>{
   const a=e.target.closest('[data-sv]');if(a){openSavingsForm(null,a.dataset.sv);return}
@@ -931,6 +1024,9 @@ $('#svStartBtn').onclick=()=>openForm({title:'시작 잔액 설정',fields:[
   {key:'start',label:'이 날짜 기준 비상금',type:'money',value:savings.start},
   {key:'startDate',label:'기준 날짜 (이 날 이후 기록만 계산)',type:'date',value:savings.startDate||todayStr()}],
   onSave:v=>{savings.start=v.start;savings.startDate=v.startDate||''}});
+$('#svFloorBtn').onclick=()=>openForm({title:'최소 유지 금액',fields:[
+  {key:'floor',label:'비상금이 이 금액 아래로 내려가면 경고해요 (0이면 끔)',type:'money',value:savings.floor}],
+  onSave:v=>{savings.floor=v.floor}});
 
 /* ---------- 대출 ---------- */
 const loanPaid=l=>(l.payments||[]).reduce((s,p)=>s+(Number(p.principal)||0),0);
