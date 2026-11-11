@@ -126,6 +126,12 @@ nav.tabs button.on .i{filter:none;opacity:1}
 .modal{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;padding:20px;
   background:color-mix(in srgb,var(--bg) 70%,rgba(0,0,0,.35));backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
 .modal.open{display:flex}
+.modal{opacity:0;transition:opacity .24s ease}
+.modal.show{opacity:1}
+.modal .sheet{transform:translateY(28px) scale(.96);opacity:.6;transition:transform .3s cubic-bezier(.2,.9,.25,1),opacity .24s ease}
+.modal.show .sheet{transform:none;opacity:1}
+.modal.closing .sheet{transform:translateY(36px) scale(.95);transition:transform .22s ease-in,opacity .2s ease-in;opacity:0}
+@media (prefers-reduced-motion:reduce){.modal,.modal .sheet{transition:none}}
 .sheet{background:var(--card);border-radius:24px;width:100%;max-width:560px;max-height:calc(100vh - 40px);overflow:auto;padding:22px 24px 24px;box-shadow:0 20px 60px rgba(0,0,0,.18);position:relative}
 .sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .sheet-head h3{margin:0;font-size:20px}
@@ -611,11 +617,20 @@ function openEntry(item,presetDate){
   }
   renderCatChips($('#catChips'),selCat,v=>selCat=v,editing?{name:editing.category,group:editing.group}:null);
   renderPayChips($('#payChips'),selPay,v=>selPay=v,editing?editing.payment:null);
-  $('#entry').classList.add('open');document.body.style.overflow='hidden';
+  modalOpen($('#entry'));
 }
-function closeEntry(){$('#entry').classList.remove('open');document.body.style.overflow='';editing=null;render()}
+function modalOpen(m){clearTimeout(m._t);m.classList.remove('closing');m.classList.add('open');void m.offsetWidth;m.classList.add('show');document.body.style.overflow='hidden'}
+function modalClose(m){if(!m.classList.contains('show'))return;m.classList.remove('show');m.classList.add('closing');
+  if(document.activeElement&&m.contains(document.activeElement))document.activeElement.blur();
+  m._t=setTimeout(()=>{m.classList.remove('open','closing');if(!$('.modal.open'))document.body.style.overflow=''},240)}
+// 바깥 빈 공간을 누르면 닫기 (창 안에서 누르기 시작한 경우는 제외)
+function backdropClose(m,fn){let downOut=false;
+  m.addEventListener('pointerdown',e=>{downOut=e.target===m});
+  m.addEventListener('click',e=>{if(e.target===m&&downOut)fn();downOut=false})}
+function closeEntry(){modalClose($('#entry'));editing=null;render()}
 document.addEventListener('click',e=>{if(e.target.closest('[data-open-entry]'))openEntry(null,curView==='list'?selDate:null)});
-$('#entryClose').onclick=closeEntry;$('#entryCancel').onclick=closeEntry;
+$('#entryClose').onclick=closeEntry;
+backdropClose($('#entry'),closeEntry);$('#entryCancel').onclick=closeEntry;
 $('#entrySave').onclick=saveEntry;
 function saveEntry(){
   const amount=digits(amt.value);
@@ -933,7 +948,7 @@ function openForm(cfg){
   hideToast();formCfg=cfg;$('#formTitle').textContent=cfg.title;$('#formDel').hidden=!cfg.onDelete;
   const typeVal=(cfg.fields.find(f=>f.key==='type')||{}).value;
   $('#formBody').innerHTML=cfg.fields.map(f=>{const h=fieldHTML(f);return f.showIf?`<div class="fwrap" data-show="${f.showIf}" style="${f.showIf===typeVal?'':'display:none'}">${h}</div>`:h}).join('');
-  $('#form').classList.add('open');document.body.style.overflow='hidden';
+  modalOpen($('#form'));
 }
 function fieldHTML(f){{
     const v=f.value??'';const lab=`<div class="label">${esc(f.label)}</div>`;
@@ -942,7 +957,7 @@ function fieldHTML(f){{
     if(f.type==='money')return (f.big?'':lab)+`<div class="amount-wrap"${f.big?' style="margin-top:8px"':''}><input data-key="${f.key}" data-money class="num" inputmode="numeric" placeholder="0" value="${v?Number(v).toLocaleString('ko-KR'):''}" autocomplete="off" ${f.big?'':'style="font-size:24px"'}><span>원</span></div>`;
     return lab+`<input data-key="${f.key}" class="field" type="${f.type==='date'?'date':'text'}" ${f.type==='number'?'inputmode="decimal"':''} placeholder="${esc(f.ph||'')}" value="${esc(v)}" maxlength="${f.max||60}" autocomplete="off">`;
 }}
-function closeForm(){$('#form').classList.remove('open');document.body.style.overflow='';formCfg=null;render()}
+function closeForm(){modalClose($('#form'));formCfg=null;render()}
 $('#formBody').addEventListener('input',e=>{if(e.target.hasAttribute('data-money'))fmtInput(e.target)});
 $('#formBody').addEventListener('click',e=>{const b=e.target.closest('.seg button,.chips .chip');if(!b)return;b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
   if(b.closest('[data-key=type]'))$$('#formBody .fwrap').forEach(w=>w.style.display=w.dataset.show===b.dataset.v?'':'none')});
