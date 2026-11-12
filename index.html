@@ -15,12 +15,12 @@
 <style>
 :root{
   --bg:#f5f3ee; --card:#ffffff; --ink:#1d2321; --sub:#6b726f; --line:#e6e2da;
-  --accent:#1f6f5c; --accent-soft:#e3f0ec; --fixed:#3d5a80; --fixed-soft:#e4eaf2; --danger:#c2483d; --warn:#b7791f;
+  --accent:#1f6f5c; --accent-soft:#e3f0ec; --fixed:#3d5a80; --fixed-soft:#e4eaf2; --warn-soft:#fbefd9; --danger-soft:#f8e7e4; --stu-soft:#f1e8f4; --danger:#c2483d; --warn:#b7791f;
   --radius:18px; --shadow:0 1px 2px rgba(0,0,0,.04),0 4px 16px rgba(0,0,0,.05);
   --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
 }
 @media (prefers-color-scheme: dark){
-  :root{--bg:#141716;--card:#1e2221;--ink:#eef1ef;--sub:#9aa29e;--line:#2d3331;--accent:#4fb59a;--accent-soft:#1f3a33;--fixed:#7fa3d1;--fixed-soft:#22303f;--shadow:none}
+  :root{--bg:#141716;--card:#1e2221;--ink:#eef1ef;--sub:#9aa29e;--line:#2d3331;--accent:#4fb59a;--accent-soft:#1f3a33;--fixed:#7fa3d1;--fixed-soft:#22303f;--warn-soft:#3a2f1a;--danger-soft:#3d2422;--stu-soft:#33283a;--warn:#e0a84a;--danger:#e8776c;--shadow:none}
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--ink);
@@ -147,6 +147,9 @@ nav.tabs button.on .i{filter:none;opacity:1}
 .toast button{color:#7fe0c4;font-weight:700}
 .banner{background:var(--accent-soft);color:var(--ink);border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .banner b{color:var(--accent)}
+.btn.warn{background:var(--warn);color:#fff}
+.btn.alert{background:var(--danger);color:#fff}
+@media (prefers-color-scheme: dark){.btn.warn,.btn.alert{color:#1a1a1a}}
 .donut-wrap{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
 .donut-wrap svg{flex:none}
 .legend{flex:1;min-width:200px}
@@ -166,8 +169,8 @@ nav.tabs button.on .i{filter:none;opacity:1}
 .plus{color:var(--accent)}.minus{color:var(--danger)}
 .sv-status{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;padding:4px 10px;border-radius:99px}
 .sv-status.ok{background:var(--accent-soft);color:var(--accent)}
-.sv-status.warn{background:#fbefd9;color:var(--warn)}
-.sv-status.danger{background:#f8e7e4;color:var(--danger)}
+.sv-status.warn{background:var(--warn-soft);color:var(--warn)}
+.sv-status.danger{background:var(--danger-soft);color:var(--danger)}
 .gauge{position:relative;height:14px;background:var(--bg);border-radius:99px;margin:18px 0 6px;overflow:visible}
 .gauge .fill{height:100%;border-radius:99px}
 .gauge .floor{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--ink);opacity:.6}
@@ -199,7 +202,7 @@ nav.tabs button.on .i{filter:none;opacity:1}
 @media (min-width:820px){.ln-grid{grid-template-columns:1fr 1fr}}
 .ln-grid .loan+.loan{margin-top:0}
 .kind{font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--fixed-soft);color:var(--fixed);margin-right:6px;vertical-align:2px}
-.kind.stu{background:#f1e8f4;color:#8e6c8a}
+.kind.stu{background:var(--stu-soft);color:#8e6c8a}
 .pill-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .pill-row span{font-size:12.5px;background:var(--bg);border-radius:8px;padding:5px 9px;color:var(--sub)}
 .pill-row span b{color:var(--ink);font-weight:700}
@@ -284,7 +287,7 @@ nav.tabs button.on .i{filter:none;opacity:1}
         <div class="avail"><span class="muted" id="svAvailLabel">쓸 수 있는 금액</span><b class="num" id="svAvail">0원</b></div>
         <div class="split">
           <div class="s"><span>이번 달 들어온 돈</span><b class="num" id="svIn">0원</b></div>
-          <div class="s" style="background:#f8e7e4"><span style="color:var(--danger)">이번 달 나간 돈</span><b class="num" id="svOut">0원</b></div>
+          <div class="s" style="background:var(--danger-soft)"><span style="color:var(--danger)">이번 달 나간 돈</span><b class="num" id="svOut">0원</b></div>
         </div>
         <div class="row" style="margin-top:16px">
           <button class="btn" data-sv="in">＋ 입금</button>
@@ -749,8 +752,8 @@ function renderHome(){
   renderBanner();
   const sb=savingsRows().bal,fl=savings.floor||0;
   const lim=savings.monthLimit||0,mu=svMonthUsed(mKey(todayStr()));
-  if(lim&&mu>lim)$('#monthEndBanner').insertAdjacentHTML('afterbegin',`<div class="banner" style="background:#fbefd9"><div>📅 <b style="color:var(--warn)">이번 달 비상금 사용 한도를 넘었어요</b><div class="muted" style="margin-top:4px">${won(mu)} 사용 · 한도 ${won(lim)}</div></div><button class="btn sm line" onclick="show('savings')">비상금 보기</button></div>`);
-  if(fl&&sb<fl)$('#monthEndBanner').insertAdjacentHTML('afterbegin',`<div class="banner" style="background:#f8e7e4"><div>⚠️ <b style="color:var(--danger)">비상금이 ${won(fl)} 아래예요</b><div class="muted" style="margin-top:4px">현재 ${won(sb)} · ${won(fl-sb)} 채워야 해요</div></div><button class="btn sm line" onclick="show('savings')">비상금 보기</button></div>`);
+  if(lim&&mu>lim)$('#monthEndBanner').insertAdjacentHTML('afterbegin',`<div class="banner" style="background:var(--warn-soft)"><div>📅 <b style="color:var(--warn)">이번 달 비상금 사용 한도를 넘었어요</b><div class="muted" style="margin-top:4px">${won(mu)} 사용 · 한도 ${won(lim)}</div></div><button class="btn sm warn" onclick="show('savings')">비상금 보기</button></div>`);
+  if(fl&&sb<fl)$('#monthEndBanner').insertAdjacentHTML('afterbegin',`<div class="banner" style="background:var(--danger-soft)"><div>⚠️ <b style="color:var(--danger)">비상금이 ${won(fl)} 아래예요</b><div class="muted" style="margin-top:4px">현재 ${won(sb)} · ${won(fl-sb)} 채워야 해요</div></div><button class="btn sm alert" onclick="show('savings')">비상금 보기</button></div>`);
 }
 function renderBanner(){
   const now=new Date(),d=now.getDate(),last=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
